@@ -1,8 +1,10 @@
 /* ----------------------------------------------------------------------------
- * Name    : diceserv.cpp
- * Author  : Naram Qashat (CyberBotX)
- * Version : 3.0.4
- * Date    : (Last modified) August 26, 2017
+ * Name             : diceserv.cpp
+ * Original Author  : Naram Qashat (CyberBotX)
+ * Fork Maintainer  : Rick Cybaniak (Cyb-r)
+ * Fork URL         : https://github.com/cyb-r/DiceServ
+ * Version          : 3.0.5
+ * Date             : (Last modified) March 28, 2026
  * ----------------------------------------------------------------------------
  * The following applies to the non-Anope-derived portions of the code
  * (excluding the RNG):
@@ -10,6 +12,7 @@
 The MIT License (MIT)
 
 Copyright (c) 2004-2017 Naram Qashat
+Copyright (c) 2026 Rick Cybaniak
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -49,6 +52,7 @@ SOFTWARE.
  * ----------------------------------------------------------------------------
  * Changelog:
  *
+ * 3.0.5 - Swaped the RNG to use simde.
  * 3.0.4 - Replaced Agner Fog's SFMT+MOA RNG with a dSFMT RNG by the authors
  *           of the Mersenne Twister RNG, mainly due to concerns over the RNG
  *           not producing unbiased results.
@@ -152,8 +156,8 @@ SOFTWARE.
 #ifdef _MSC_VER
 # include <float.h>
 #endif
-#include <emmintrin.h>
 
+#include <simde/x86/sse2.h>
 static const int DICE_MAX_TIMES = 25;
 static const unsigned DICE_MAX_DICE = 99999;
 static const unsigned DICE_MAX_SIDES = 99999;
@@ -269,7 +273,7 @@ class dSFMT216091
 {
 	union w128_t
 	{
-		__m128i si;
+		simde__m128i si;
 		uint64_t u[2];
 		uint32_t u32[4];
 		double d[2];
@@ -277,7 +281,7 @@ class dSFMT216091
 	union X128I_T
 	{
 		uint64_t u[2];
-		__m128i i128;
+		simde__m128i i128;
 	};
 
 	static const int DSFMT_POS1 = 1890; // The pick up position of the array
@@ -314,16 +318,16 @@ class dSFMT216091
 	 */
 	static void do_recursion(w128_t &r, const w128_t &a, const w128_t &b, w128_t &u)
 	{
-		__m128i x = a.si;
-		__m128i z = _mm_slli_epi64(x, DSFMT_SL1);
-		__m128i y = _mm_shuffle_epi32(u.si, SSE2_SHUFF);
-		z = _mm_xor_si128(z, b.si);
-		y = _mm_xor_si128(y, z);
+		simde__m128i x = a.si;
+		simde__m128i z = simde_mm_slli_epi64(x, DSFMT_SL1);
+		simde__m128i y = simde_mm_shuffle_epi32(u.si, SSE2_SHUFF);
+		z = simde_mm_xor_si128(z, b.si);
+		y = simde_mm_xor_si128(y, z);
 
-		__m128i v = _mm_srli_epi64(y, DSFMT_SR);
-		__m128i w = _mm_and_si128(y, sse2_param_mask.i128);
-		v = _mm_xor_si128(v, x);
-		v = _mm_xor_si128(v, w);
+		simde__m128i v = simde_mm_srli_epi64(y, DSFMT_SR);
+		simde__m128i w = simde_mm_and_si128(y, sse2_param_mask.i128);
+		v = simde_mm_xor_si128(v, x);
+		v = simde_mm_xor_si128(v, w);
 		r.si = v;
 		u.si = y;
 	}
@@ -2783,20 +2787,22 @@ public:
 		if (*source.service == this->DiceServ && params.empty())
 		{
 			BotInfo *BotServ = Config->GetClient("BotServ");
-			source.Reply(_(" \n"
-				"\002%s\002 will check for syntax errors and tell you what\n"
-				"errors you have.\n"
-				" \n"
-				"If a %s bot is in a channel, you can also trigger the\n"
-				"both within the channel using fantasy commands. If a\n"
-				"%s bot is in the channel, output will be said by the\n"
-				"bot. Otherwise, it will be said by %s. Syntax of the\n"
-				"fantasy commands can be found in the help of each command.\n"
-				" \n"
-				"%s by Naram Qashat (CyberBotX, cyberbotx@cyberbotx.com).\n"
-				"Questions, comments, or concerns can be directed to email or\n"
-				"to #DiceServ on jenna.cyberbotx.com."), this->DiceServ->nick.c_str(), BotServ ? BotServ->nick.c_str() : "BotServ",
-				BotServ ? BotServ->nick.c_str() : "BotServ", this->DiceServ->nick.c_str(), this->DiceServ->nick.c_str());
+            source.Reply(_(" \n"
+                "\002%s\002 will check for syntax errors and tell you what\n"
+                "errors you have.\n"
+                " \n"
+                "If a %s bot is in a channel, you can also trigger the\n"
+                "both within the channel using fantasy commands. If a\n"
+                "%s bot is in the channel, output will be said by the\n"
+                "bot. Otherwise, it will be said by %s. Syntax of the\n"
+                "fantasy commands can be found in the help of each command.\n"
+                " \n"
+                "\002%s\002 originally written by Naram Qashat (CyberBotX).\n"
+                "Anope 2.0.x simde port maintained by Rick Cybaniak (Cyb-r).\n"
+                "Report issues at: https://github.com/cyb-r/DiceServ"),
+                this->DiceServ->nick.c_str(), BotServ ? BotServ->nick.c_str() : "BotServ",
+                BotServ ? BotServ->nick.c_str() : "BotServ", this->DiceServ->nick.c_str(),
+                this->DiceServ->nick.c_str());
 		}
 	}
 

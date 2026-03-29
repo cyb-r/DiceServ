@@ -166,13 +166,13 @@ public:
 
 	static const Anope::string &Author()
 	{
-		static Anope::string author = "Naram Qashat";
+		static Anope::string author = "Naram Qashat (original), Rick Cybaniak (Anope 2.0.x simde fork)";
 		return author;
 	}
 
 	static const Anope::string &Version()
 	{
-		static Anope::string version = "3.0.4";
+		static Anope::string version = "3.0.5";
 		return version;
 	}
 
