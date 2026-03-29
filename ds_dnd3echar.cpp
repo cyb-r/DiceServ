@@ -1,6 +1,7 @@
 /* ----------------------------------------------------------------------------
- * Name    : ds_dnd3echar.cpp
- * Author  : Naram Qashat (CyberBotX)
+ * Name            : ds_dnd3echar.cpp
+ * Original Author : Naram Qashat (CyberBotX)
+ * Maintainer      : Rick Cybaniak (Cybr)
  * ----------------------------------------------------------------------------
  * Description:
  *
@@ -84,7 +85,7 @@ public:
 		this->SetSyntax(_("[[\037channel\037] \037comment\037]"));
 	}
 
-	void Execute(CommandSource &source, const std::vector<Anope::string> &params) anope_override
+	void Execute(CommandSource &source, const std::vector<Anope::string> &params) override
 	{
 		std::vector<Anope::string> newParams = params;
 		newParams.insert(newParams.begin() + (source.c ? 1 : 0), "6~4d6");
@@ -147,7 +148,7 @@ public:
 		DiceServDataHandler->SendReply(data, source, output);
 	}
 
-	bool OnHelp(CommandSource &source, const Anope::string &) anope_override
+	bool OnHelp(CommandSource &source, const Anope::string &) override
 	{
 		this->SendSyntax(source);
 		source.Reply(" ");
@@ -158,8 +159,8 @@ public:
 			"which was removed. The syntax for channel and comment is the\n"
 			"same as with the ROLL command (see \002%s%s HELP ROLL\002\n"
 			"for more information on how to use this and ROLL).\n"
-			" \n"), Config->StrictPrivmsg.c_str(), source.service->nick.c_str());
-		const Anope::string &fantasycharacters = Config->GetModule("fantasy")->Get<const Anope::string>("fantasycharacter", "!");
+			" \n"), Config->GetBlock("options").Get<Anope::string>("strictprivmsg", "/").c_str(), source.service->nick.c_str());
+		const Anope::string &fantasycharacters = Config->GetModule("fantasy").Get<const Anope::string>("fantasycharacter", "!");
 		if (!fantasycharacters.empty())
 			source.Reply(_("Additionally, if fantasy is enabled, this command can be triggered by using:\n"
 				" \n"
@@ -170,7 +171,7 @@ public:
 		source.Reply(_("Example:\n"
 			"  %s%s DND3ECHAR\n"
 			"    {4d6=(\x16" "3\x16 5 5 6)}=16\n"
-			"  (The above is basically 19 minus the lowest of 3)"), Config->StrictPrivmsg.c_str(), source.service->nick.c_str());
+			"  (The above is basically 19 minus the lowest of 3)"), Config->GetBlock("options").Get<Anope::string>("strictprivmsg", "/").c_str(), source.service->nick.c_str());
 		return true;
 	}
 };

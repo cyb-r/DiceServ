@@ -1,6 +1,7 @@
 /* ----------------------------------------------------------------------------
- * Name    : ds_earthdawn.cpp
- * Author  : Naram Qashat (CyberBotX)
+ * Name            : ds_earthdawn.cpp
+ * Original Author : Naram Qashat (CyberBotX)
+ * Maintainer      : Rick Cybaniak (Cybr)
  * ----------------------------------------------------------------------------
  * Description:
  *
@@ -82,7 +83,7 @@ public:
 		this->SetSyntax(_("\037step\037[+\037karma\037] [[\037channel\037] \037comment\037]"));
 	}
 
-	void Execute(CommandSource &source, const std::vector<Anope::string> &params) anope_override
+	void Execute(CommandSource &source, const std::vector<Anope::string> &params) override
 	{
 		DiceServData data;
 		data.isExtended = true;
@@ -105,8 +106,8 @@ public:
 			{
 				stepStr = data.dicePart.substr(0, plus);
 				data.dicePart = data.dicePart.substr(plus);
-				int karma = convertTo<int>(data.dicePart.substr(1), false);
-				Anope::string tmp = stringify(karma);
+				int karma = ds_convertTo<int>(data.dicePart.substr(1), false);
+				Anope::string tmp = ds_stringify(karma);
 				if (data.dicePart.substr(1) != tmp)
 				{
 					source.Reply(_("\037karma\037 for an Earthdawn roll must be a number."));
@@ -123,8 +124,8 @@ public:
 				stepStr = data.dicePart;
 				data.dicePart = "";
 			}
-			int step = convertTo<int>(stepStr, false);
-			Anope::string tmp = stringify(step);
+			int step = ds_convertTo<int>(stepStr, false);
+			Anope::string tmp = ds_stringify(step);
 			if (stepStr != tmp)
 			{
 				source.Reply(_("\037step\037 for an Earthdawn roll must be a number."));
@@ -139,7 +140,7 @@ public:
 				data.diceStr = data.dicePart = EarthdawnStepTable[step];
 			else
 				data.diceStr = data.dicePart = std::string("(") + EarthdawnStepTable[step] + ")" + data.dicePart;
-			data.dicePrefix = "Step " + stringify(step) + " (";
+			data.dicePrefix = "Step " + ds_stringify(step) + " (";
 		}
 
 		if (!DiceServDataHandler->CheckMessageLengthPreProcess(data, source))
@@ -169,7 +170,7 @@ public:
 			{
 				std::vector<unsigned> bonuses;
 
-				Anope::string sidesStr = stringify(DiceServDataHandler->Sides(*result));
+				Anope::string sidesStr = ds_stringify(DiceServDataHandler->Sides(*result));
 				size_t resultPos = output.find(sidesStr, tmpPos);
 
 				DiceResult *bonusResult = NULL;
@@ -190,7 +191,7 @@ public:
 				{
 					if (!first)
 						bonusStream << " ";
-					bonusStream << stringify(bonuses[j]);
+					bonusStream << ds_stringify(bonuses[j]);
 					data.results[0] += bonuses[j];
 					first = false;
 				}
@@ -210,7 +211,7 @@ public:
 		}
 
 		size_t beforeResult = output.find("} "), afterResult = output.find(">", beforeResult);
-		output = output.substr(0, beforeResult + 2) + stringify(data.results[0]) + output.substr(afterResult);
+		output = output.substr(0, beforeResult + 2) + ds_stringify(data.results[0]) + output.substr(afterResult);
 
 		if (!DiceServDataHandler->CheckMessageLengthPostProcess(data, source, output))
 		{
@@ -221,7 +222,7 @@ public:
 		DiceServDataHandler->SendReply(data, source, output);
 	}
 
-	bool OnHelp(CommandSource &source, const Anope::string &) anope_override
+	bool OnHelp(CommandSource &source, const Anope::string &) override
 	{
 		this->SendSyntax(source);
 		source.Reply(" ");
@@ -237,8 +238,8 @@ public:
 			" \n"
 			"NOTE: Unlike the ROLL and EXROLL commands, EARTHDAWN does\n"
 			"not allow you to use the ~ to specify multiple throws.\n"
-			" \n"), Config->StrictPrivmsg.c_str(), source.service->nick.c_str());
-		const Anope::string &fantasycharacters = Config->GetModule("fantasy")->Get<const Anope::string>("fantasycharacter", "!");
+			" \n"), Config->GetBlock("options").Get<Anope::string>("strictprivmsg", "/").c_str(), source.service->nick.c_str());
+		const Anope::string &fantasycharacters = Config->GetModule("fantasy").Get<const Anope::string>("fantasycharacter", "!");
 		if (!fantasycharacters.empty())
 			source.Reply(_("Additionally, if fantasy is enabled, this command can be triggered by using:\n"
 				" \n"
@@ -250,8 +251,8 @@ public:
 			"  %s%s EARTHDAWN 5\n"
 			"    Same as %s%s EXROLL 1d8\n"
 			"  %s%s EARTHDAWN 100+6\n"
-			"    Same as %s%s EXROLL (4d20+6d10+4d8)+6"), Config->StrictPrivmsg.c_str(), source.service->nick.c_str(), Config->StrictPrivmsg.c_str(),
-			source.service->nick.c_str(), Config->StrictPrivmsg.c_str(), source.service->nick.c_str(), Config->StrictPrivmsg.c_str(),
+			"    Same as %s%s EXROLL (4d20+6d10+4d8)+6"), Config->GetBlock("options").Get<Anope::string>("strictprivmsg", "/").c_str(), source.service->nick.c_str(), Config->GetBlock("options").Get<Anope::string>("strictprivmsg", "/").c_str(),
+			source.service->nick.c_str(), Config->GetBlock("options").Get<Anope::string>("strictprivmsg", "/").c_str(), source.service->nick.c_str(), Config->GetBlock("options").Get<Anope::string>("strictprivmsg", "/").c_str(),
 		source.service->nick.c_str());
 		return true;
 	}

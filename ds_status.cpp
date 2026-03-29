@@ -1,6 +1,7 @@
 /* ----------------------------------------------------------------------------
  * Name    : ds_status.cpp
- * Author  : Naram Qashat (CyberBotX)
+ * Original Author : Naram Qashat (CyberBotX)
+ * Maintainer      : Rick Cybaniak (Cybr)
  * ----------------------------------------------------------------------------
  * Description:
  *
@@ -26,7 +27,7 @@ public:
 		this->SetSyntax(_("{\037channel\037|\037nick\037}"));
 	}
 
-	void Execute(CommandSource &source, const std::vector<Anope::string> &params) anope_override
+	void Execute(CommandSource &source, const std::vector<Anope::string> &params) override
 	{
 		Anope::string what = params[0];
 		// If the argument starts with a #, assume it's a channel
@@ -61,7 +62,7 @@ public:
 				// If a User record was not found, we will check all the users to find one that has a matching NickCore
 				if (!nu)
 				{
-					Anope::hash_map<User *>::const_iterator it = UserListByNick.begin(), it_end = UserListByNick.end();
+					auto it = UserListByNick.begin(), it_end = UserListByNick.end();
 					for (; it != it_end; ++it)
 					{
 						nu = it->second;
@@ -85,7 +86,7 @@ public:
 		}
 	}
 
-	bool OnHelp(CommandSource &source, const Anope::string &) anope_override
+	bool OnHelp(CommandSource &source, const Anope::string &) override
 	{
 		this->SendSyntax(source);
 		source.Reply(" ");

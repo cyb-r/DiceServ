@@ -1,6 +1,7 @@
 /* ----------------------------------------------------------------------------
- * Name    : ds_calc.cpp
- * Author  : Naram Qashat (CyberBotX)
+ * Name            : ds_calc.cpp
+ * Original Author : Naram Qashat (CyberBotX)
+ * Maintainer      : Rick Cybaniak (Cybr)
  * ----------------------------------------------------------------------------
  * Description:
  *
@@ -28,7 +29,7 @@ public:
 		this->SetSyntax(_("\037dice\037 [[\037channel\037] \037comment\037]"));
 	}
 
-	void Execute(CommandSource &source, const std::vector<Anope::string> &params) anope_override
+	void Execute(CommandSource &source, const std::vector<Anope::string> &params) override
 	{
 		DiceServData data;
 		data.roundResults = false;
@@ -55,15 +56,15 @@ public:
 		DiceServDataHandler->SendReply(data, source, output);
 	}
 
-	bool OnHelp(CommandSource &source, const Anope::string &) anope_override
+	bool OnHelp(CommandSource &source, const Anope::string &) override
 	{
 		this->SendSyntax(source);
 		source.Reply(" ");
 		source.Reply(_("This command is identical to ROLL (see \002%s%s\002\n"
 			"\002HELP ROLL\002 for more information on how to use this and\n"
 			"ROLL), except the results are not rounded off and are\n"
-			"displayed as is."), Config->StrictPrivmsg.c_str(), source.service->nick.c_str());
-		const Anope::string &fantasycharacters = Config->GetModule("fantasy")->Get<const Anope::string>("fantasycharacter", "!");
+			"displayed as is."), Config->GetBlock("options").Get<Anope::string>("strictprivmsg", "/").c_str(), source.service->nick.c_str());
+		const Anope::string &fantasycharacters = Config->GetModule("fantasy").Get<const Anope::string>("fantasycharacter", "!");
 		if (!fantasycharacters.empty())
 			source.Reply(_(" \n"
 				"Additionally, if fantasy is enabled, this command can be triggered by using:\n"
@@ -90,7 +91,7 @@ public:
 		this->SetSyntax(_("\037dice\037 [[\037channel\037] \037comment\037]"));
 	}
 
-	void Execute(CommandSource &source, const std::vector<Anope::string> &params) anope_override
+	void Execute(CommandSource &source, const std::vector<Anope::string> &params) override
 	{
 		DiceServData data;
 		data.roundResults = false;
@@ -141,15 +142,15 @@ public:
 		DiceServDataHandler->SendReply(data, source, output);
 	}
 
-	bool OnHelp(CommandSource &source, const Anope::string &) anope_override
+	bool OnHelp(CommandSource &source, const Anope::string &) override
 	{
 		this->SendSyntax(source);
 		source.Reply(" ");
 		source.Reply(_("This command is identical to EXROLL (see \002/%s%s\002\n"
 			"\002HELP EXROLL\002 for more information on how to use this and\n"
 			"EXROLL), except the results are not rounded off and are\n"
-			"displayed as is."), Config->StrictPrivmsg.c_str(), source.service->nick.c_str());
-		const Anope::string &fantasycharacters = Config->GetModule("fantasy")->Get<const Anope::string>("fantasycharacter", "!");
+			"displayed as is."), Config->GetBlock("options").Get<Anope::string>("strictprivmsg", "/").c_str(), source.service->nick.c_str());
+		const Anope::string &fantasycharacters = Config->GetModule("fantasy").Get<const Anope::string>("fantasycharacter", "!");
 		if (!fantasycharacters.empty())
 			source.Reply(_(" \n"
 				"Additionally, if fantasy is enabled, this command can be triggered by using:\n"

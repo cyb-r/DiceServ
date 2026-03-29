@@ -3,18 +3,36 @@
 #include <iomanip>
 #include <limits>
 #include <numeric>
+#include <sstream>
 #include "module.h"
 
-/** Specialization of Anope's stringify that handles doubles only. This gives us max precision on output of doubles.
- */
-template<> inline Anope::string stringify<double>(const double &x)
+/** Local stringify helper - converts a value to Anope::string */
+template<typename T>
+static inline Anope::string ds_stringify(const T &x)
 {
 	std::ostringstream stream;
-
-	if (!(stream << std::setprecision(std::numeric_limits<double>::digits10) << x))
-		throw ConvertException("Stringify fail");
-
+	stream << x;
 	return stream.str();
+}
+
+template<>
+inline Anope::string ds_stringify<double>(const double &x)
+{
+	std::ostringstream stream;
+	stream << std::setprecision(std::numeric_limits<double>::digits10) << x;
+	return stream.str();
+}
+
+/** Local convertTo helper - converts Anope::string to a numeric type.
+ * The second argument is unused but kept for source compatibility.
+ */
+template<typename T>
+static inline T ds_convertTo(const Anope::string &s, bool = true)
+{
+	T val = T();
+	std::istringstream stream(s.str());
+	stream >> val;
+	return val;
 }
 
 /** Enumeration of dice error codes */
@@ -166,13 +184,13 @@ public:
 
 	static const Anope::string &Author()
 	{
-		static Anope::string author = "Naram Qashat";
+		static Anope::string author = "Naram Qashat (original), Rick Cybaniak (Anope 2.1.x simde fork)";
 		return author;
 	}
 
 	static const Anope::string &Version()
 	{
-		static Anope::string version = "3.0.4";
+		static Anope::string version = "4.0.0";
 		return version;
 	}
 

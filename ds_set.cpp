@@ -1,6 +1,7 @@
 /* ----------------------------------------------------------------------------
- * Name    : ds_set.cpp
- * Author  : Naram Qashat (CyberBotX)
+ * Name            : ds_set.cpp
+ * Original Author : Naram Qashat (CyberBotX)
+ * Maintainer      : Rick Cybaniak (Cybr)
  * ----------------------------------------------------------------------------
  * Description:
  *
@@ -22,16 +23,16 @@ class DSSetCommand : public Command
 public:
 	DSSetCommand(Module *creator) : Command(creator, "diceserv/set", 3, 3)
 	{
-		this->SetDesc(Anope::printf(_("Set options for %s access"), Config->GetClient("DiceServ")->nick.c_str()));
+		this->SetDesc("Set options for " + Config->GetClient("DiceServ")->nick + " access");
 		this->SetSyntax(_("\037option\037 \037parameters\037"));
 	}
 
-	void Execute(CommandSource &source, const std::vector<Anope::string> &) anope_override
+	void Execute(CommandSource &source, const std::vector<Anope::string> &) override
 	{
 		this->OnSyntaxError(source, "");
 	}
 
-	bool OnHelp(CommandSource &source, const Anope::string &subcommand) anope_override
+	bool OnHelp(CommandSource &source, const Anope::string &subcommand) override
 	{
 		this->SendSyntax(source);
 		source.Reply(" ");
@@ -40,8 +41,8 @@ public:
 		source.Reply(_("Available options:"));
 		source.Reply(" ");
 		Anope::string this_name = source.command;
-		bool hide_privileged_commands = Config->GetBlock("options")->Get<bool>("hideprivilegedcommands"),
-			hide_registered_commands = Config->GetBlock("options")->Get<bool>("hideregisteredcommands");
+		bool hide_privileged_commands = Config->GetBlock("options").Get<bool>("hideprivilegedcommands"),
+			hide_registered_commands = Config->GetBlock("options").Get<bool>("hideregisteredcommands");
 		for (CommandInfo::map::const_iterator it = source.service->commands.begin(), it_end = source.service->commands.end(); it != it_end; ++it)
 		{
 			const Anope::string &c_name = it->first;
@@ -58,12 +59,14 @@ public:
 					continue;
 
 				source.command = it->first;
-				c->OnServHelp(source);
+				HelpWrapper help;
+				c->OnServHelp(source, help);
+				help.SendTo(source);
 			}
 		}
 		source.Reply(" ");
 		source.Reply(_("Type \002%s%s HELP %s \037option\037\002 for more information on a\n"
-			"particular option.\n"), Config->StrictPrivmsg.c_str(), source.service->nick.c_str(), this_name.c_str());
+			"particular option.\n"), Config->GetBlock("options").Get<Anope::string>("strictprivmsg", "/").c_str(), source.service->nick.c_str(), this_name.c_str());
 		source.Reply(" ");
 		source.Reply(_("Note: Access to these commands are limited. See help on each\n"
 			"option for details."));
@@ -97,7 +100,7 @@ public:
 		this->SetDesc(_("Change ignored/allowed setting"));
 	}
 
-	void Execute(CommandSource &source, const std::vector<Anope::string> &params) anope_override
+	void Execute(CommandSource &source, const std::vector<Anope::string> &params) override
 	{
 		if (Anope::ReadOnly)
 		{
@@ -196,7 +199,7 @@ public:
 				// If a User record was not found, we will check all the users to find one that has a matching NickCore
 				if (!nu)
 				{
-					Anope::hash_map<User *>::const_iterator it = UserListByNick.begin(), it_end = UserListByNick.end();
+					auto it = UserListByNick.begin(), it_end = UserListByNick.end();
 					for (; it != it_end; ++it)
 					{
 						nu = it->second;
@@ -244,7 +247,7 @@ public:
 		this->ChanOpCanIgnore = chanOpCanIgnore;
 	}
 
-	bool OnHelp(CommandSource &source, const Anope::string &) anope_override
+	bool OnHelp(CommandSource &source, const Anope::string &) override
 	{
 		this->SetRealSyntax(source);
 		this->SendSyntax(source);
@@ -291,7 +294,7 @@ public:
 
 	/** This is being overridden so we can replace the syntax string depending on the access the user has.
 	 */
-	void OnSyntaxError(CommandSource &source, const Anope::string &subcommand) anope_override
+	void OnSyntaxError(CommandSource &source, const Anope::string &subcommand) override
 	{
 		this->SetRealSyntax(source);
 		Command::OnSyntaxError(source, subcommand);
@@ -313,9 +316,9 @@ public:
 			throw ModuleException("No interface for DiceServ");
 	}
 
-	void OnReload(Configuration::Conf *conf) anope_override
+	void OnReload(Configuration::Conf &conf) override
 	{
-		this->set_ignore_cmd.SetChanOpCanIgnore(conf->GetModule("diceserv")->Get<bool>("chanopcanignore"));
+		this->set_ignore_cmd.SetChanOpCanIgnore(conf.GetModule("diceserv").Get<bool>("chanopcanignore"));
 	}
 };
 

@@ -1,5 +1,7 @@
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+
 build_modules(${CMAKE_CURRENT_SOURCE_DIR})
 
 install(FILES diceserv.example.conf
-  DESTINATION ${CONF_DIR}
+    DESTINATION ${CONF_DIR}
 )

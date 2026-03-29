@@ -1,8 +1,10 @@
 /* ----------------------------------------------------------------------------
- * Name    : diceserv.cpp
- * Author  : Naram Qashat (CyberBotX)
- * Version : 3.0.4
- * Date    : (Last modified) August 26, 2017
+ * Name             : diceserv.cpp
+ * Original Author  : Naram Qashat (CyberBotX)
+ * Fork Maintainer  : Rick Cybaniak (Cyb-r)
+ * Fork URL         : https://github.com/cyb-r/DiceServ
+ * Version          : 4.0.0
+ * Date             : (Last modified) March 28, 2026
  * ----------------------------------------------------------------------------
  * The following applies to the non-Anope-derived portions of the code
  * (excluding the RNG):
@@ -10,6 +12,7 @@
 The MIT License (MIT)
 
 Copyright (c) 2004-2017 Naram Qashat
+Copyright (c) 2026 Rick Cybaniak
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -38,7 +41,7 @@ SOFTWARE.
  * Software Foundation; either version 1, or (at your option) any later
  * version.
  * ----------------------------------------------------------------------------
- * Requires: Anope 2.0.x
+ * Requires: Anope 2.1.x
  * ----------------------------------------------------------------------------
  * Description:
  *
@@ -49,6 +52,13 @@ SOFTWARE.
  * ----------------------------------------------------------------------------
  * Changelog:
  *
+ * 4.0.0 - Replace anope_override with override throughout
+ *       - Update Timer, GetModule and GetBlock to Anope 2.1.x API
+ *       - Fix SendPrivmsg/SendNotice, StrictPrivmsg and Anope::printf
+ *       - Replace stringify/convertTo with local ds_ helpers
+ *       - Fix hash_map and Serialize::Checker iteration
+ *       - Fix OnServHelp to use HelpWrapper
+ *       - Bump version to 4.0.0, target Anope 2.1.x"
  * 3.0.4 - Replaced Agner Fog's SFMT+MOA RNG with a dSFMT RNG by the authors
  *           of the Mersenne Twister RNG, mainly due to concerns over the RNG
  *           not producing unbiased results.
@@ -142,18 +152,20 @@ SOFTWARE.
 
 /* RequiredLibraries: m */
 
+#include "diceserv.h"
 #include <algorithm>
 #include <functional>
 #include <cctype>
 #include <cmath>
 #include <cstdlib>
 #include <ctime>
-#include "diceserv.h"
+#include <stack>
 #ifdef _MSC_VER
 # include <float.h>
 #endif
-#include <emmintrin.h>
 
+#define SIMDE_ENABLE_NATIVE_ALIASES 0
+#include <simde/x86/sse2.h>
 static const int DICE_MAX_TIMES = 25;
 static const unsigned DICE_MAX_DICE = 99999;
 static const unsigned DICE_MAX_SIDES = 99999;
@@ -269,7 +281,7 @@ class dSFMT216091
 {
 	union w128_t
 	{
-		__m128i si;
+		simde__m128i si;
 		uint64_t u[2];
 		uint32_t u32[4];
 		double d[2];
@@ -277,7 +289,7 @@ class dSFMT216091
 	union X128I_T
 	{
 		uint64_t u[2];
-		__m128i i128;
+		simde__m128i i128;
 	};
 
 	static const int DSFMT_POS1 = 1890; // The pick up position of the array
@@ -314,16 +326,16 @@ class dSFMT216091
 	 */
 	static void do_recursion(w128_t &r, const w128_t &a, const w128_t &b, w128_t &u)
 	{
-		__m128i x = a.si;
-		__m128i z = _mm_slli_epi64(x, DSFMT_SL1);
-		__m128i y = _mm_shuffle_epi32(u.si, SSE2_SHUFF);
-		z = _mm_xor_si128(z, b.si);
-		y = _mm_xor_si128(y, z);
+		simde__m128i x = a.si;
+		simde__m128i z = simde_mm_slli_epi64(x, DSFMT_SL1);
+		simde__m128i y = simde_mm_shuffle_epi32(u.si, SSE2_SHUFF);
+		z = simde_mm_xor_si128(z, b.si);
+		y = simde_mm_xor_si128(y, z);
 
-		__m128i v = _mm_srli_epi64(y, DSFMT_SR);
-		__m128i w = _mm_and_si128(y, sse2_param_mask.i128);
-		v = _mm_xor_si128(v, x);
-		v = _mm_xor_si128(v, w);
+		simde__m128i v = simde_mm_srli_epi64(y, DSFMT_SR);
+		simde__m128i w = simde_mm_and_si128(y, sse2_param_mask.i128);
+		v = simde_mm_xor_si128(v, x);
+		v = simde_mm_xor_si128(v, w);
 		r.si = v;
 		u.si = y;
 	}
@@ -466,7 +478,7 @@ static inline bool is_number(char chr)
 static inline bool is_number_str(const Anope::string &str)
 {
 	Anope::string::const_iterator begin = str.begin(), end = str.end();
-	return std::find_if(begin, end, std::not1(std::ptr_fun(is_number))) == end && std::count(begin, end, '.') < 2;
+	return std::find_if(begin, end, [](char c){ return !is_number(c); }) == end && std::count(begin, end, '.') < 2;
 }
 
 /** Determine if the given character is a multiplication or division operator.
@@ -1350,7 +1362,7 @@ static Postfix InfixToPostfix(DiceServData &data, const Infix &infix)
 					number = -atan(1.0) * 4;
 			}
 			else
-				number = is_number_str(token1) ? -convertTo<double>(token1) : std::numeric_limits<double>::quiet_NaN();
+				number = is_number_str(token1) ? -ds_convertTo<double>(token1) : std::numeric_limits<double>::quiet_NaN();
 			if (is_infinite(number) || is_notanumber(number))
 			{
 				data.errCode = is_infinite(number) ? DICE_ERROR_OVERUNDERFLOW : DICE_ERROR_UNDEFINED;
@@ -1362,7 +1374,7 @@ static Postfix InfixToPostfix(DiceServData &data, const Infix &infix)
 		}
 		else if (is_number(token[0]))
 		{
-			double number = is_number_str(token) ? convertTo<double>(token) : std::numeric_limits<double>::quiet_NaN();
+			double number = is_number_str(token) ? ds_convertTo<double>(token) : std::numeric_limits<double>::quiet_NaN();
 			if (is_infinite(number) || is_notanumber(number))
 			{
 				data.errCode = is_infinite(number) ? DICE_ERROR_OVERUNDERFLOW : DICE_ERROR_UNDEFINED;
@@ -1437,7 +1449,7 @@ static Postfix InfixToPostfix(DiceServData &data, const Infix &infix)
 							if (function_argument_count(lastone) < 0)
 							{
 								unsigned arity = arity_stack.top();
-								Anope::string arityStr = stringify(arity);
+								Anope::string arityStr = ds_stringify(arity);
 								lastone += "_" + arityStr;
 							}
 							arity_stack.pop();
@@ -1507,7 +1519,7 @@ static Postfix InfixToPostfix(DiceServData &data, const Infix &infix)
 				if (function_argument_count(lastone) < 0)
 				{
 					unsigned arity = arity_stack.top();
-					Anope::string arityStr = stringify(arity);
+					Anope::string arityStr = ds_stringify(arity);
 					lastone += "_" + arityStr;
 				}
 				arity_stack.pop();
@@ -1560,13 +1572,13 @@ static double EvaluatePostfix(DiceServData &data, const Postfix &postfix)
 				if (function_arguments < 0)
 				{
 					size_t underscore = token.find('_');
-					int real_function_arguments = convertTo<int>(token.substr(underscore + 1));
+					int real_function_arguments = ds_convertTo<int>(token.substr(underscore + 1));
 					token = token.substr(0, underscore);
 					if (real_function_arguments < -function_arguments)
 					{
 						data.errCode = DICE_ERROR_STACK;
-						data.errStr = "Function requires at least " + stringify(-function_arguments) + " arguments, but only " +
-							stringify(real_function_arguments) + " were passed.";
+						data.errStr = "Function requires at least " + ds_stringify(-function_arguments) + " arguments, but only " +
+							ds_stringify(real_function_arguments) + " were passed.";
 						return 0;
 					}
 					function_arguments = real_function_arguments;
@@ -2035,7 +2047,7 @@ const unsigned &DiceResult::Sides() const
 
 Anope::string DiceResult::DiceString() const
 {
-	return stringify(this->num) + "d" + stringify(this->sides);
+	return ds_stringify(this->num) + "d" + ds_stringify(this->sides);
 }
 
 unsigned DiceResult::Sum() const
@@ -2051,13 +2063,13 @@ double DiceResult::Value() const
 Anope::string DiceResult::LongString() const
 {
 	std::ostringstream str;
-	str << stringify(this->num) << "d" << stringify(this->sides) << "=(";
+	str << ds_stringify(this->num) << "d" << ds_stringify(this->sides) << "=(";
 	bool first = true;
 	for (size_t i = 0, len = this->results.size(); i < len; ++i)
 	{
 		if (!first)
 			str << " ";
-		str << stringify(this->results[i]);
+		str << ds_stringify(this->results[i]);
 		first = false;
 	}
 	str << ")";
@@ -2066,7 +2078,7 @@ Anope::string DiceResult::LongString() const
 
 Anope::string DiceResult::ShortString() const
 {
-	return stringify(this->num) + "d" + stringify(this->sides) + "=(" + stringify(this->Sum()) + ")";
+	return ds_stringify(this->num) + "d" + ds_stringify(this->sides) + "=(" + ds_stringify(this->Sum()) + ")";
 }
 
 DiceResult *DiceResult::Clone() const
@@ -2104,7 +2116,7 @@ Anope::string FunctionResult::LongString() const
 	{
 		if (!first)
 			str << ",";
-		str << stringify(this->arguments[i]);
+		str << ds_stringify(this->arguments[i]);
 		first = false;
 	}
 	str << ")=" << this->result;
@@ -2358,7 +2370,7 @@ Anope::string DiceServData::GenerateLongExOutput() const
 	{
 		if (!first)
 			output << " ";
-		output << stringify(this->results[i]);
+		output << ds_stringify(this->results[i]);
 		first = false;
 	}
 
@@ -2421,7 +2433,7 @@ Anope::string DiceServData::GenerateShortExOutput() const
 	{
 		if (!first)
 			output << " ";
-		output << stringify(this->results[i]);
+		output << ds_stringify(this->results[i]);
 		first = false;
 	}
 
@@ -2442,7 +2454,7 @@ Anope::string DiceServData::GenerateNoExOutput() const
 	{
 		if (!first)
 			output << " ";
-		output << stringify(this->results[i]);
+		output << ds_stringify(this->results[i]);
 		first = false;
 	}
 
@@ -2494,9 +2506,9 @@ void DiceServData::SendReply(CommandSource &source, const Anope::string &output)
 	if (this->chanStr.empty())
 		source.Reply(output);
 	else if (this->sourceIsBot)
-		IRCD->SendPrivmsg(*source.service, this->chanStr, "%s", output.c_str());
+		IRCD->SendPrivmsg(*source.service, this->chanStr, output);
 	else
-		IRCD->SendNotice(Config->GetClient("DiceServ"), this->chanStr, "%s", output.c_str());
+		IRCD->SendNotice(Config->GetClient("DiceServ"), this->chanStr, output);
 }
 
 bool DiceServData::HasExtended() const
@@ -2633,12 +2645,12 @@ class DiceServUpgradeTimer : public Timer
 	Anope::string diceservdb;
 
 public:
-	DiceServUpgradeTimer(Module *creator, long timeout, bool dorepeat, const Anope::string &db) : Timer(creator, timeout, Anope::CurTime, dorepeat),
+	DiceServUpgradeTimer(Module *creator, long timeout, bool dorepeat, const Anope::string &db) : Timer(creator, timeout, dorepeat),
 		diceservdb(db)
 	{
 	}
 
-	void Tick(time_t) anope_override;
+	void Tick() override;
 };
 
 /** DiceServ's core module, provides the interface for other modules to be able to use the roller.
@@ -2664,7 +2676,7 @@ public:
 		this->SetAuthor(DiceServService::Author());
 		this->SetVersion(DiceServService::Version());
 
-		const Anope::string &diceservdb = Config->GetModule(this)->Get<const Anope::string>("diceservdb", "");
+		const Anope::string &diceservdb = Config->GetModule(this).Get<const Anope::string>("diceservdb", "");
 		if (!diceservdb.empty())
 		{
 			std::ifstream oldDatabase(diceservdb.c_str(), std::ios::in | std::ios::binary);
@@ -2681,15 +2693,15 @@ public:
 		}
 	}
 
-	void OnReload(Configuration::Conf *conf) anope_override
+	void OnReload(Configuration::Conf &conf) override
 	{
-		const Anope::string &dsnick = conf->GetModule(this)->Get<const Anope::string>("client", "DiceServ");
+		const Anope::string &dsnick = conf.GetModule(this).Get<const Anope::string>("client", "DiceServ");
 		this->DiceServ = BotInfo::Find(dsnick, true);
 	}
 
 	/** Handles accessing HELP FUNCTIONS
 	 */
-	EventReturn OnPreCommand(CommandSource &source, Command *command, std::vector<Anope::string> &params) anope_override
+	EventReturn OnPreCommand(CommandSource &source, Command *command, std::vector<Anope::string> &params) override
 	{
 		if (command->name.equals_ci("generic/help"))
 		{
@@ -2745,78 +2757,83 @@ public:
 
 	/** Handles adding a line for DiceServ status to NickServ's INFO command.
 	 */
-	void OnNickInfo(CommandSource &source, NickAlias *na, InfoFormatter &info, bool show_hidden) anope_override
+	void OnNickInfo(CommandSource &source, NickAlias *na, InfoFormatter &info, bool show_hidden) override
 	{
 		if (source.HasCommand("diceserv/info"))
-			info[Anope::printf(_("%s Status"), this->DiceServ->nick.c_str())] = this->IsIgnored(na->nc) ? _("Ignored") : _("Allowed");
+			info[this->DiceServ->nick + " " + _("Status")] = this->IsIgnored(na->nc) ? _("Ignored") : _("Allowed");
 	}
 
 	/** Handles adding a line for DiceServ status to ChanServ's INFO command.
 	 */
-	void OnChanInfo(CommandSource &source, ChannelInfo *ci, InfoFormatter &info, bool show_all) anope_override
+	void OnChanInfo(CommandSource &source, ChannelInfo *ci, InfoFormatter &info, bool show_all) override
 	{
 		if ((ci->HasExt("SECUREFOUNDER") ? source.IsFounder(ci) : source.AccessFor(ci).HasPriv("FOUNDER")) || source.HasCommand("diceserv/info"))
-			info[Anope::printf(_("%s Status"), this->DiceServ->nick.c_str())] = this->IsIgnored(ci) ? _("Ignored") : _("Allowed");
+			info[this->DiceServ->nick + " " + _("Status")] = this->IsIgnored(ci) ? _("Ignored") : _("Allowed");
 	}
 
 	/** Displays the help header for the core of DiceServ.
 	 */
-	EventReturn OnPreHelp(CommandSource &source, const std::vector<Anope::string> &params) anope_override
+	EventReturn OnPreHelp(CommandSource &source, const std::vector<Anope::string> &params) override
 	{
 		if (*source.service == this->DiceServ && params.empty())
+		{
+			Anope::string strictprivmsg = Config->GetBlock("options").Get<Anope::string>("strictprivmsg", "/");
 			source.Reply(_("\002%s\002 allows you to roll any number of dice with any\n"
 				"number of sides. The output of the roll can either be output\n"
 				"just to you, or you can have it notice the result to a\n"
 				"channel. Available commands are listed below; to use them,\n"
 				"type \002%s%s \037command\037\002. For more information on a\n"
 				"specific command, type \002%s%s HELP \037command\037\002.\n"
-				" "), this->DiceServ->nick.c_str(), Config->StrictPrivmsg.c_str(), this->DiceServ->nick.c_str(), Config->StrictPrivmsg.c_str(),
+				" "), this->DiceServ->nick.c_str(), strictprivmsg.c_str(), this->DiceServ->nick.c_str(), strictprivmsg.c_str(),
 				this->DiceServ->nick.c_str());
+		}
 
 		return EVENT_CONTINUE;
 	}
 
 	/** Displays the help footer for the core of DiceServ.
 	 */
-	void OnPostHelp(CommandSource &source, const std::vector<Anope::string> &params) anope_override
+	void OnPostHelp(CommandSource &source, const std::vector<Anope::string> &params) override
 	{
-		if (*source.service == this->DiceServ && params.empty())
+        if (*source.service == this->DiceServ && params.empty())
 		{
 			BotInfo *BotServ = Config->GetClient("BotServ");
-			source.Reply(_(" \n"
-				"\002%s\002 will check for syntax errors and tell you what\n"
-				"errors you have.\n"
-				" \n"
-				"If a %s bot is in a channel, you can also trigger the\n"
-				"both within the channel using fantasy commands. If a\n"
-				"%s bot is in the channel, output will be said by the\n"
-				"bot. Otherwise, it will be said by %s. Syntax of the\n"
-				"fantasy commands can be found in the help of each command.\n"
-				" \n"
-				"%s by Naram Qashat (CyberBotX, cyberbotx@cyberbotx.com).\n"
-				"Questions, comments, or concerns can be directed to email or\n"
-				"to #DiceServ on jenna.cyberbotx.com."), this->DiceServ->nick.c_str(), BotServ ? BotServ->nick.c_str() : "BotServ",
-				BotServ ? BotServ->nick.c_str() : "BotServ", this->DiceServ->nick.c_str(), this->DiceServ->nick.c_str());
+            source.Reply(_(" \n"
+                "\002%s\002 will check for syntax errors and tell you what\n"
+                "errors you have.\n"
+                " \n"
+                "If a %s bot is in a channel, you can also trigger the\n"
+                "both within the channel using fantasy commands. If a\n"
+                "%s bot is in the channel, output will be said by the\n"
+                "bot. Otherwise, it will be said by %s. Syntax of the\n"
+                "fantasy commands can be found in the help of each command.\n"
+                " \n"
+                "\002%s\002 originally written by Naram Qashat (CyberBotX).\n"
+                "Anope 2.1.x simde port maintained by Rick Cybaniak (Cyb-r).\n"
+                "Report issues at: https://github.com/cyb-r/DiceServ"),
+                this->DiceServ->nick.c_str(), BotServ ? BotServ->nick.c_str() : "BotServ",
+                BotServ ? BotServ->nick.c_str() : "BotServ", this->DiceServ->nick.c_str(),
+                this->DiceServ->nick.c_str());
 		}
 	}
 
 	/** Updates the DiceServ ignore status of a user connecting if they were ignored on their NickServ account.
 	 */
-	void OnUserConnect(User *u, bool &) anope_override
+	void OnUserConnect(User *u, bool &) override
 	{
 		this->NickEvent(u);
 	}
 
 	/** Updates the DiceServ ignore status of a user who's nick was changed if they were ignored on their NickServ account.
 	 */
-	void OnUserNickChange(User *u, const Anope::string &) anope_override
+	void OnUserNickChange(User *u, const Anope::string &) override
 	{
 		this->NickEvent(u);
 	}
 
 	/** If a user was ignored in DiceServ when they register a nick, then persist the ignore onto their account.
 	 */
-	void OnNickRegister(User *u, NickAlias *, const Anope::string &) anope_override
+	void OnNickRegister(User *u, NickAlias *, const Anope::string &) override
 	{
 		if (this->IsIgnored(u))
 			this->Ignore(u->Account());
@@ -2824,7 +2841,7 @@ public:
 
 	/** Updates the DiceServ ignore status of a channel when someone joins it if it was ignored on its ChanServ account.
 	 */
-	void OnJoinChannel(User *, Channel *c) anope_override
+	void OnJoinChannel(User *, Channel *c) override
 	{
 		if (c->ci && this->IsIgnored(c->ci))
 			this->Ignore(c);
@@ -2832,7 +2849,7 @@ public:
 
 	/** If a channel was ignored in DiceServ when it gets registered, then persist the ignore onto the registered channel.
 	 */
-	void OnChanRegistered(ChannelInfo *ci) anope_override
+	void OnChanRegistered(ChannelInfo *ci) override
 	{
 		if (ci->c && this->IsIgnored(ci->c))
 			this->Ignore(ci);
@@ -3005,7 +3022,7 @@ public:
 	}
 };
 
-void DiceServUpgradeTimer::Tick(time_t)
+void DiceServUpgradeTimer::Tick()
 {
 	if (Me->IsSynced())
 	{

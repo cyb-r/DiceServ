@@ -1,6 +1,7 @@
 /* ----------------------------------------------------------------------------
- * Name    : ds_list.cpp
- * Author  : Naram Qashat (CyberBotX)
+ * Name            : ds_list.cpp
+ * Original Author : Naram Qashat (CyberBotX)
+ * Maintainer      : Rick Cybaniak (Cybr)
  * ----------------------------------------------------------------------------
  * Description:
  *
@@ -23,11 +24,11 @@ class DSListCommand : public Command
 public:
 	DSListCommand(Module *creator) : Command(creator, "diceserv/list", 3, 4)
 	{
-		this->SetDesc(Anope::printf(_("Gives list of %s access"), Config->GetClient("DiceServ")->nick.c_str()));
+		this->SetDesc("Gives list of " + Config->GetClient("DiceServ")->nick + " access");
 		this->SetSyntax(_("{IGNORE|ALLOW|ALL} \037what\037 \037pattern\037 [{REG|UNREG}]"));
 	}
 
-	void Execute(CommandSource &source, const std::vector<Anope::string> &params) anope_override
+	void Execute(CommandSource &source, const std::vector<Anope::string> &params) override
 	{
 		Anope::string showtype = params[0], what = params[1], pattern = params[2];
 		// Ignore type must be one of the following, otherwise we stop processing
@@ -84,7 +85,7 @@ public:
 		{
 			// If no regtype argument is given or we want to look only at unregistered channels, we process the channels list
 			if (reg == REG_SHOW_UNREG || reg == REG_SHOW_ALL)
-				for (channel_map::const_iterator it = ChannelList.begin(), it_end = ChannelList.end(); it != it_end; ++it)
+				for (auto it = ChannelList.begin(), it_end = ChannelList.end(); it != it_end; ++it)
 				{
 					Channel *c = it->second;
 					// Skip the channel if it's registered
@@ -108,7 +109,7 @@ public:
 				}
 			// If no regtype argument is given or we want to look only at registered channels, we process the ChanServ list
 			if (reg == REG_SHOW_REG || reg == REG_SHOW_ALL)
-				for (registered_channel_map::const_iterator it = RegisteredChannelList->begin(), it_end = RegisteredChannelList->end(); it != it_end; ++it)
+				for (auto it = (*RegisteredChannelList).begin(), it_end = (*RegisteredChannelList).end(); it != it_end; ++it)
 				{
 					ChannelInfo *ci = it->second;
 					// Skip the channel if it's suspended
@@ -136,7 +137,7 @@ public:
 		{
 			// If no regtype argument is given or we want to look only at unregistered nicks, we process the users list
 			if (reg == REG_SHOW_UNREG || reg == REG_SHOW_ALL)
-				for (Anope::hash_map<User *>::const_iterator it = UserListByNick.begin(), it_end = UserListByNick.end(); it != it_end; ++it)
+				for (auto it = UserListByNick.begin(), it_end = UserListByNick.end(); it != it_end; ++it)
 				{
 					// Check if the nick is a bot, and skip it if it is
 					BotInfo *bot = BotInfo::Find(it->second->nick);
@@ -164,7 +165,7 @@ public:
 				}
 			// If no regtype argument is given or we want to look only at registered nicks, we process the NickServ list
 			if (reg == REG_SHOW_REG || reg == REG_SHOW_ALL)
-				for (nickalias_map::const_iterator it = NickAliasList->begin(), it_end = NickAliasList->end(); it != it_end; ++it)
+				for (auto it = (*NickAliasList).begin(), it_end = (*NickAliasList).end(); it != it_end; ++it)
 				{
 					NickAlias *na = it->second;
 					// Skip the nick if it's suspended
@@ -191,7 +192,7 @@ public:
 		source.Reply(_("End of list - %d/%d matches shown."), shown > 100 ? 100 : shown, shown);
 	}
 
-	bool OnHelp(CommandSource &source, const Anope::string &) anope_override
+	bool OnHelp(CommandSource &source, const Anope::string &) override
 	{
 		this->SendSyntax(source);
 		source.Reply(" ");

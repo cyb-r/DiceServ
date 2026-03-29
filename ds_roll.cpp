@@ -1,6 +1,7 @@
 /* ----------------------------------------------------------------------------
- * Name    : ds_roll.cpp
- * Author  : Naram Qashat (CyberBotX)
+ * Name            : ds_roll.cpp
+ * Original Author : Naram Qashat (CyberBotX)
+ * Maintainer      : Rick Cybaniak (Cybr)
  * ----------------------------------------------------------------------------
  * Description:
  *
@@ -28,7 +29,7 @@ public:
 		this->SetSyntax(_("\037dice\037 [[\037channel\037] \037comment\037]"));
 	}
 
-	void Execute(CommandSource &source, const std::vector<Anope::string> &params) anope_override
+	void Execute(CommandSource &source, const std::vector<Anope::string> &params) override
 	{
 		DiceServData data;
 		data.rollPrefix = "Roll";
@@ -54,7 +55,7 @@ public:
 		DiceServDataHandler->SendReply(data, source, output);
 	}
 
-	bool OnHelp(CommandSource &source, const Anope::string &subcommand) anope_override
+	bool OnHelp(CommandSource &source, const Anope::string &subcommand) override
 	{
 		if (subcommand.empty())
 		{
@@ -80,7 +81,7 @@ public:
 				"give a channel to use a comment. If given, this comment will\n"
 				"be added to the end of the result.\n"
 				" "));
-			const Anope::string &fantasycharacters = Config->GetModule("fantasy")->Get<const Anope::string>("fantasycharacter", "!");
+			const Anope::string &fantasycharacters = Config->GetModule("fantasy").Get<const Anope::string>("fantasycharacter", "!");
 			if (!fantasycharacters.empty())
 				source.Reply(_("Additionally, if fantasy is enabled, this command can be triggered by using:\n"
 					" \n"
@@ -100,9 +101,9 @@ public:
 				"  Roll 3d6, double the result, then add 5:\n"
 				"    %s%s ROLL 3d6*2+5\n"
 				"  Roll 3d6 three consecutive times:\n"
-				"    %s%s ROLL 3~3d6"), Config->StrictPrivmsg.c_str(), source.service->nick.c_str(), Config->StrictPrivmsg.c_str(),
-				source.service->nick.c_str(), Config->StrictPrivmsg.c_str(), source.service->nick.c_str(), Config->StrictPrivmsg.c_str(),
-				source.service->nick.c_str(), Config->StrictPrivmsg.c_str(), source.service->nick.c_str(), Config->StrictPrivmsg.c_str(),
+				"    %s%s ROLL 3~3d6"), Config->GetBlock("options").Get<Anope::string>("strictprivmsg", "/").c_str(), source.service->nick.c_str(), Config->GetBlock("options").Get<Anope::string>("strictprivmsg", "/").c_str(),
+				source.service->nick.c_str(), Config->GetBlock("options").Get<Anope::string>("strictprivmsg", "/").c_str(), source.service->nick.c_str(), Config->GetBlock("options").Get<Anope::string>("strictprivmsg", "/").c_str(),
+				source.service->nick.c_str(), Config->GetBlock("options").Get<Anope::string>("strictprivmsg", "/").c_str(), source.service->nick.c_str(), Config->GetBlock("options").Get<Anope::string>("strictprivmsg", "/").c_str(),
 				source.service->nick.c_str());
 		}
 		else if (subcommand.equals_ci("EXPRESSIONS"))
@@ -166,7 +167,7 @@ public:
 				" \n"
 				"The dice roller will also recognize if you want to have a\n"
 				"negative number when prefixed with a -. This will not cause\n"
-				"problems even though it is also used for subtraction."), Config->StrictPrivmsg.c_str(), source.service->nick.c_str());
+				"problems even though it is also used for subtraction."), Config->GetBlock("options").Get<Anope::string>("strictprivmsg", "/").c_str(), source.service->nick.c_str());
 		return true;
 	}
 };
@@ -186,7 +187,7 @@ public:
 		this->SetSyntax(_("\037dice\037 [[\037channel\037] \037comment\037]"));
 	}
 
-	void Execute(CommandSource &source, const std::vector<Anope::string> &params) anope_override
+	void Execute(CommandSource &source, const std::vector<Anope::string> &params) override
 	{
 		DiceServData data;
 		data.isExtended = true;
@@ -236,7 +237,7 @@ public:
 		DiceServDataHandler->SendReply(data, source, output);
 	}
 
-	bool OnHelp(CommandSource &source, const Anope::string &) anope_override
+	bool OnHelp(CommandSource &source, const Anope::string &) override
 	{
 		this->SendSyntax(source);
 		source.Reply(" ");
@@ -248,8 +249,8 @@ public:
 			"Example: Roll a 4d6: {4d6=(6 3 1 4)}=14\n"
 			" \n"
 			"This can be useful if you want to know exactly what each die\n"
-			"said when it was rolled."), Config->StrictPrivmsg.c_str(), source.service->nick.c_str());
-		const Anope::string &fantasycharacters = Config->GetModule("fantasy")->Get<const Anope::string>("fantasycharacter", "!");
+			"said when it was rolled."), Config->GetBlock("options").Get<Anope::string>("strictprivmsg", "/").c_str(), source.service->nick.c_str());
+		const Anope::string &fantasycharacters = Config->GetModule("fantasy").Get<const Anope::string>("fantasycharacter", "!");
 		if (!fantasycharacters.empty())
 			source.Reply(_("Additionally, if fantasy is enabled, this command can be triggered by using:\n"
 				" \n"

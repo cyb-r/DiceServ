@@ -1,8 +1,8 @@
-Primary repository on [GitHub](https://github.com/CyberBotX/DiceServ).
+# DiceServ for Anope 2.1.x
 
-# DiceServ for Anope 2.0
+Primary repository on [GitHub](https://github.com/cyb-r/DiceServ).
 
-This is DiceServ, a dice rolling service for version 2.0 of the [Anope IRC Services](http://www.anope.org/). It's primary purpose is for tabletop role-playing games being played over IRC. It consists of the following commands:
+This is a fork of the original DiceServ, a dice rolling service for version 2.1.x of the [Anope IRC Services](http://www.anope.org/). Its primary purpose is for tabletop role-playing games being played over IRC. It consists of the following commands:
 
 * ROLL (basic dice rolls)
 * EXROLL (extended output on dice rolls)
@@ -26,38 +26,94 @@ The parser supports not only dice rolls, but also much more complex math. It has
 * Percentile dice
 * Rolling multiple sets of the same dice
 
-DiceServ was originally created for Epona 1.4.14 in 2004. Version 2 of DiceServ was created as a module for Anope 1.8/1.9 in 2011, with all functionality in a single file. Version 3 of DiceServ was created as a set of modules for Anope 2.0 in 2016, heavily modularizing the service into multiple modules.
+## History
 
-DiceServ includes its own random number generator (RNG), which is a double-precision SIMD-oriented Fast Mersenne Twister RNG, with the code coming from [Mutsuo Saito and Makoto Matsumoto](http://www.math.sci.hiroshima-u.ac.jp/~m-mat/MT/SFMT/). It parses by taking the given infix-notation expression and converting it into postfix-notation using the [Shunting-yard algorithm](https://en.wikipedia.org/wiki/Shunting-yard_algorithm), with an improvement to handle arbitrary numbers of arguments on functions coming from [Robin Sheat's blog](https://blog.kallisti.net.nz/2008/02/extension-to-the-shunting-yard-algorithm-to-allow-variable-numbers-of-arguments-to-functions/).
+DiceServ was originally created for Epona 1.4.14 in 2004. Version 2 was created as a module for Anope 1.8/1.9 in 2011. Version 3 was created as a set of modules for Anope 2.0 in 2016. Version 4 is this fork, porting DiceServ to Anope 2.1.x with cross-platform SIMD support via [SIMDe](https://github.com/simd-everywhere/simde).
+
+## Branches
+
+* **master / anope-2.1** — Targets Anope 2.1.x (this branch)
+* **anope-2.x** — Targets Anope 2.0.x
+
+## What Changed in Version 4.0.0
+
+This fork makes the following changes to port DiceServ to Anope 2.1.x:
+
+* Replaced `anope_override` with standard C++ `override`
+* Updated `Timer`, `GetModule` and `GetBlock` to the Anope 2.1.x API
+* Fixed `SendPrivmsg`/`SendNotice`, `StrictPrivmsg` and `Anope::printf` for Anope 2.1.x
+* Replaced Anope's `stringify`/`convertTo` with local helpers to avoid dependency on internal Anope functions
+* Fixed `hash_map` and `Serialize::Checker` iteration for Anope 2.1.x
+* Updated `OnServHelp` to use `HelpWrapper` as required by Anope 2.1.x
+
+## Technical Notes
+
+DiceServ includes its own random number generator (RNG), a double-precision SIMD-oriented Fast Mersenne Twister (dSFMT) by Mutsuo Saito and Makoto Matsumoto. It parses expressions by converting infix notation to postfix notation using the [Shunting-yard algorithm](https://en.wikipedia.org/wiki/Shunting-yard_algorithm), with an improvement to handle arbitrary numbers of arguments on functions coming from [Robin Sheat's blog](https://blog.kallisti.net.nz/2008/02/extension-to-the-shunting-yard-algorithm-to-allow-variable-numbers-of-arguments-to-functions/).
+
+SIMDe is bundled with this fork and requires no separate installation. It will be compiled automatically as part of the normal build process.
 
 ## Compiling and Installing
 
-To compile DiceServ for use with Anope, place all of DiceServ's files into their own directory in the modules/third directory. (NOTE: The files **MUST** be in their own directory for all the modules to get compiled correctly.) Once you have done this, when you re-configure Anope's build process, it will find DiceServ and set it to compile on the next `make` and it will install when `make install` is run.
+To compile DiceServ for use with Anope, place all of DiceServ's files into their own directory in the `modules/third` directory. (NOTE: The files **MUST** be in their own directory for all the modules to get compiled correctly.) Once you have done this, when you re-configure Anope's build process, it will find DiceServ and set it to compile on the next `make` and it will install when `make install` is run.
+
+```bash
+cd /path/to/anope
+mkdir build && cd build
+cmake ..
+make
+make install
+```
 
 ## Configuration
 
-By default, there will be a diceserv.example.conf file placed in Anope's conf directory. You can use this as-is to get a DiceServ client on the network and all the above commands will be available. If you wish to customize DiceServ, it is recommended that you copy this file to diceserv.conf and edit the file accordingly. Regardless of which way you go, you must make sure to include the configuration file from Anope's main configuration file, typically using an `include` block.
+By default, there will be a `diceserv.example.conf` file placed in Anope's conf directory. You can use this as-is to get a DiceServ client on the network with all commands available. If you wish to customize DiceServ, it is recommended that you copy this file to `diceserv.conf` and edit it accordingly. Regardless of which way you go, you must make sure to include the configuration file from Anope's main configuration file, typically using an `include` block.
 
 ## Usage
 
-Once DiceServ has been included in your configuration, it should be available for use the next time you start Anope (or reload its configuration if it was already running). Commands are sent to the DiceServ client defined in the configuration set above. It is recommended that you also configure your IRC daemon's aliases so that the DS and DICESERV commands will be routed to the DiceServ client. Examples of how to use the various DiceServ commands can be found by sending the text `HELP` to DiceServ.
+Once DiceServ has been included in your configuration, it should be available for use the next time you start Anope (or reload its configuration if it was already running). Commands are sent to the DiceServ client defined in the configuration. It is recommended that you also configure your IRC daemon's aliases so that the DS and DICESERV commands will be routed to the DiceServ client. Examples of how to use the various DiceServ commands can be found by sending the text `HELP` to DiceServ.
 
 ## Contact
 
-If you have any questions, comments or concerns about DiceServ:
+If you have any questions, comments or concerns about this fork:
 
-* Contact me by email: cyberbotx@cyberbotx.com (please include DiceServ in the subject line)
-* Contact me on IRC: join the channel #diceserv on the server jenna.cyberbotx.com
-* Submit an issue via [GitHub's issue tracker](https://github.com/CyberBotX/DiceServ/issues)
+* Contact by email: telek@gmx.com (please include DiceServ in the subject line)
+* Submit an issue via [GitHub's issue tracker](https://github.com/cyb-r/DiceServ/issues)
 
 ## License
 
-With the exception of the Anope-specific parts of DiceServ (which are under the GPLv1 license) and the RNG (which is under the BSD 3-clause license), the remaining parts of DiceServ are licensed as follows:
+With the exception of the Anope-specific parts of DiceServ (which are under GPLv1) and the RNG (which is under a BSD-style license), the remaining parts of DiceServ are licensed as follows:
 
 ```
 The MIT License (MIT)
 
-Copyright (c) 2004-2017 Naram Qashat
+Copyright (c) 2004-2016 Naram Qashat
+Copyright (c) 2026 Rick Cybaniak
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+This fork bundles [SIMDe](https://github.com/simd-everywhere/simde) (SIMD Everywhere), which is also licensed under the MIT License:
+
+```
+The MIT License (MIT)
+
+Copyright (c) 2017 Evan Nemerson
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
