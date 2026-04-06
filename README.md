@@ -8,6 +8,7 @@ This is a fork of the original DiceServ, a dice rolling service for version 2.0.
 * EXROLL (extended output on dice rolls)
 * CALC (like ROLL but without rounding)
 * EXCALC (like EXROLL but without rounding)
+* DAGGERHEART (rolls fear and hope dice for Daggerheart)
 * DND3ECHAR (rolls stats for a Dungeons and Dragons 3rd Edition character)
 * EARTHDAWN (rolls dice based off of Earthdawn's step table)
 * SET IGNORE (allows DiceServ to ignore usage by users or in channels)
